@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_tangram/tools/key_provider.dart';
 import 'dart:math';
 import 'package:webviewx/webviewx.dart';
 import 'package:flutter_tangram/widgets/webview_helpers.dart';
@@ -12,14 +14,15 @@ class HDWebView extends StatefulWidget {
 
 class _HDWebViewState extends State<HDWebView> {
   late WebViewXController webviewController;
-  final initialContent = '<h4> 欢迎使用七巧板应用 <h4>';
+  final initialContent =
+      '<h1 style="position:absolute;left:50%;top:50%;display:block;transform:translate(-50%,-50%);"> 欢迎使用七巧板应用 <h1>';
   final executeJsErrorMessage =
       'Failed to execute this task because the current content is (probably) URL that allows iframe embedding, on Web.\n\n'
       'A short reason for this is that, when a normal URL is embedded in the iframe, you do not actually own that content so you cant call your custom functions\n'
       '(read the documentation to find out why).';
 
   Size get screenSize => MediaQuery.of(context).size;
-
+  bool _showMenus = false;
   @override
   void dispose() {
     webviewController.dispose();
@@ -28,24 +31,22 @@ class _HDWebViewState extends State<HDWebView> {
 
   @override
   Widget build(BuildContext context) {
+    const KEYCODE_DPAD_CENTER = 23;
+    const KEYCODE_ENTER = 66;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('WebViewX Page'),
-      ),
-      body: Column(children: [
-        _buildWebViewX(),
-        Expanded(
-          child: Scrollbar(
-            thumbVisibility: true,
-            child: SizedBox(
-              child: ListView(
-                children: _buildButtons(),
-              ),
-            ),
-          ),
-        ),
-      ]),
-    );
+        appBar: null,
+        body: Stack(
+          alignment: Alignment.center,
+          children: <Widget>[
+            listenKeyboardDown([KEYCODE_ENTER, KEYCODE_DPAD_CENTER], (() {
+              setState(() {
+                _showMenus = !_showMenus;
+              });
+            })),
+            _buildWebViewX(),
+            _buildButtons(),
+          ],
+        ));
   }
 
   Widget _buildWebViewX() {
@@ -92,30 +93,8 @@ class _HDWebViewState extends State<HDWebView> {
 
   void _setUrl() {
     webviewController.loadContent(
-      'https://flutter.dev',
+      'https://jira.coolcollege.cn',
       SourceType.url,
-    );
-  }
-
-  void _setUrlBypass() {
-    webviewController.loadContent(
-      'https://news.ycombinator.com/',
-      SourceType.urlBypass,
-    );
-  }
-
-  void _setHtml() {
-    webviewController.loadContent(
-      initialContent,
-      SourceType.html,
-    );
-  }
-
-  void _setHtmlFromAssets() {
-    webviewController.loadContent(
-      'assets/test.html',
-      SourceType.html,
-      fromAssets: true,
     );
   }
 
@@ -141,138 +120,115 @@ class _HDWebViewState extends State<HDWebView> {
     webviewController.reload();
   }
 
-  void _toggleIgnore() {
-    final ignoring = webviewController.ignoresAllGestures;
-    webviewController.setIgnoreAllGestures(!ignoring);
-    showSnackBar('Ignore events = ${!ignoring}', context);
-  }
-
-  Future<void> _evalRawJsInGlobalContext() async {
-    try {
-      final result = await webviewController.evalRawJavascript(
-        '2+2',
-        inGlobalContext: true,
-      );
-      showSnackBar('The result is $result', context);
-    } catch (e) {
-      showAlertDialog(
-        executeJsErrorMessage,
-        context,
-      );
-    }
-  }
-
-  Future<void> _callPlatformIndependentJsMethod() async {
-    try {
-      await webviewController.callJsMethod('testPlatformIndependentMethod', []);
-    } catch (e) {
-      showAlertDialog(
-        executeJsErrorMessage,
-        context,
-      );
-    }
-  }
-
-  Future<void> _callPlatformSpecificJsMethod() async {
-    try {
-      await webviewController
-          .callJsMethod('testPlatformSpecificMethod', ['Hi']);
-    } catch (e) {
-      showAlertDialog(
-        executeJsErrorMessage,
-        context,
-      );
-    }
-  }
-
-  Future<void> _getWebviewContent() async {
-    try {
-      final content = await webviewController.getContent();
-      showAlertDialog(content.source, context);
-    } catch (e) {
-      showAlertDialog('Failed to execute this task.', context);
-    }
-  }
-
-  Widget buildSpace({
-    Axis direction = Axis.horizontal,
-    double amount = 0.2,
-    bool flex = true,
-  }) {
-    return flex
-        ? Flexible(
-            child: FractionallySizedBox(
-              widthFactor: direction == Axis.horizontal ? amount : null,
-              heightFactor: direction == Axis.vertical ? amount : null,
-            ),
-          )
-        : SizedBox(
-            width: direction == Axis.horizontal ? amount : null,
-            height: direction == Axis.vertical ? amount : null,
-          );
-  }
-
-  List<Widget> _buildButtons() {
-    return [
-      buildSpace(direction: Axis.vertical, flex: false, amount: 20.0),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(child: createButton(onTap: _goBack, text: 'Back')),
-          buildSpace(amount: 12, flex: false),
-          Expanded(child: createButton(onTap: _goForward, text: 'Forward')),
-          buildSpace(amount: 12, flex: false),
-          Expanded(child: createButton(onTap: _reload, text: 'Reload')),
-        ],
-      ),
-      buildSpace(direction: Axis.vertical, flex: false, amount: 20.0),
+  Widget _buildButtons() {
+    final List<InkWell> menusButtons = [
       createButton(
-        text:
-            'Change content to URL that allows iframes embedding\n(https://flutter.dev)',
-        onTap: _setUrl,
-      ),
-      buildSpace(direction: Axis.vertical, flex: false, amount: 20.0),
+          onTap: _goBack,
+          text: 'Back',
+          icon: const Icon(Icons.arrow_back_outlined, color: Colors.white)),
       createButton(
-        text:
-            'Change content to URL that doesnt allow iframes embedding\n(https://news.ycombinator.com/)',
-        onTap: _setUrlBypass,
-      ),
-      buildSpace(direction: Axis.vertical, flex: false, amount: 20.0),
+          onTap: _goForward,
+          text: 'Forward',
+          icon: const Icon(Icons.arrow_forward_outlined, color: Colors.white)),
       createButton(
-        text: 'Change content to HTML (hardcoded)',
-        onTap: _setHtml,
-      ),
-      buildSpace(direction: Axis.vertical, flex: false, amount: 20.0),
+          onTap: _reload,
+          text: 'Reload',
+          icon: const Icon(Icons.replay_rounded, color: Colors.white)),
       createButton(
-        text: 'Change content to HTML (from assets)',
-        onTap: _setHtmlFromAssets,
-      ),
-      buildSpace(direction: Axis.vertical, flex: false, amount: 20.0),
-      createButton(
-        text: 'Toggle on/off ignore any events (click, scroll etc)',
-        onTap: _toggleIgnore,
-      ),
-      buildSpace(direction: Axis.vertical, flex: false, amount: 20.0),
-      createButton(
-        text: 'Evaluate 2+2 in the global "window" (javascript side)',
-        onTap: _evalRawJsInGlobalContext,
-      ),
-      buildSpace(direction: Axis.vertical, flex: false, amount: 20.0),
-      createButton(
-        text: 'Call platform independent Js method (console.log)',
-        onTap: _callPlatformIndependentJsMethod,
-      ),
-      buildSpace(direction: Axis.vertical, flex: false, amount: 20.0),
-      createButton(
-        text:
-            'Call platform specific Js method, that calls back a Dart function',
-        onTap: _callPlatformSpecificJsMethod,
-      ),
-      buildSpace(direction: Axis.vertical, flex: false, amount: 20.0),
-      createButton(
-        text: 'Show current webview content',
-        onTap: _getWebviewContent,
-      ),
+          text: 'https://haidaotech.atlassian.net/',
+          onTap: _setUrl,
+          icon: const Icon(Icons.search_rounded, color: Colors.white)),
     ];
+
+    /// 对左键进行处理
+    keyCodeDpadLeft(BuildContext context, InkWell param) async {
+      /// 首位边界处理
+      final int _idx = menusButtons.indexWhere((e) => e == param);
+      if (_idx == 0) return;
+      final int _nextIndex = _idx + 1;
+      if ((_nextIndex % 4) == 1) {
+        InkWell _nextNode = menusButtons[_idx - 1];
+        await Future.delayed(const Duration(milliseconds: 20));
+        _nextNode.focusNode?.requestFocus();
+      }
+    }
+
+    /// 对右键进行处理
+    keyCodeDpadRight(BuildContext context, InkWell param) async {
+      final int _idx = menusButtons.indexWhere((e) => e == param);
+
+      /// 末位边界处理
+      if (_idx == (menusButtons.length - 1)) return;
+
+      final int _nextIndex = _idx + 1;
+      if ((_nextIndex % 4) == 0) {
+        InkWell _nextNode = menusButtons[_nextIndex];
+        await Future.delayed(const Duration(milliseconds: 20));
+        _nextNode.focusNode?.requestFocus();
+      }
+    }
+
+    focusEventHandler(
+        RawKeyEvent event, BuildContext context, InkWell param) async {
+      /// 只处理按键按下的事件
+      if (event.data is RawKeyEventDataAndroid &&
+          event.runtimeType.toString() == 'RawKeyDownEvent') {
+        CustomRawKeyEventDataAndroid _d =
+            CustomRawKeyEventDataAndroid.format(event.data);
+
+        /// 对左键进行处理
+        if (_d.keyCode == 21) {
+          await keyCodeDpadLeft(context, param);
+        }
+
+        /// 对右键进行处理
+        if (_d.keyCode == 22) {
+          await keyCodeDpadRight(context, param);
+        }
+      }
+    }
+
+    bool init = false;
+    if (!init) {
+      menusButtons.first.focusNode?.requestFocus();
+      init = true;
+    }
+
+    return RawKeyboardListener(
+        focusNode: FocusNode(),
+        autofocus: true,
+        onKey: (RawKeyEvent event) =>
+            focusEventHandler(event, context, menusButtons.first),
+        child: AnimatedOpacity(
+            opacity: _showMenus ? 1 : 0,
+            duration: const Duration(milliseconds: 300),
+            child: _showMenus
+                ? Container(
+                    width: screenSize.width,
+                    height: screenSize.height,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color.fromARGB(120, 68, 137, 255),
+                          Color.fromARGB(100, 68, 137, 255)
+                        ],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      shape: BoxShape.rectangle,
+                    ),
+                    child: Center(
+                      child: Container(
+                        alignment: Alignment.center,
+                        width: screenSize.width / 2,
+                        height: screenSize.height / 3,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: menusButtons,
+                        ),
+                      ),
+                    ))
+                : Container()));
   }
 }

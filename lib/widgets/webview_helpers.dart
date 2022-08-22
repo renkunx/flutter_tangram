@@ -1,5 +1,11 @@
+import 'dart:developer' as developer;
+import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:webviewx/webviewx.dart';
+
+import '../tools/key_provider.dart';
 
 /// This dialog will basically show up right on top of the webview.
 ///
@@ -35,15 +41,39 @@ void showSnackBar(String content, BuildContext context) {
     );
 }
 
-Widget createButton({
-  VoidCallback? onTap,
-  required String text,
-}) {
-  return ElevatedButton(
-    onPressed: onTap,
-    style: ElevatedButton.styleFrom(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-    ),
-    child: Text(text),
-  );
+InkWell createButton(
+    {VoidCallback? onTap, required String text, required Icon icon}) {
+  return InkWell(
+      splashColor: Colors.white,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ElevatedButton(
+              onPressed: onTap,
+              style: ElevatedButton.styleFrom(
+                shape: const CircleBorder(),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 16.0),
+              ),
+              child: icon,
+              focusNode: FocusNode()),
+          // Text(text)
+        ],
+      ));
+}
+
+Widget listenKeyboardDown(List<int> keys, VoidCallback onEvent) {
+  return RawKeyboardListener(
+      focusNode: FocusNode(),
+      autofocus: true,
+      onKey: (event) {
+        CustomRawKeyEventDataAndroid _d =
+            CustomRawKeyEventDataAndroid.format(event.data);
+        if (event.runtimeType == RawKeyDownEvent) {
+          keys.contains(_d.keyCode)
+              ? onEvent()
+              : developer.log(event.physicalKey.toStringShort());
+        }
+      },
+      child: Container());
 }
