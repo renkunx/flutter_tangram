@@ -93,7 +93,7 @@ class _HDWebViewState extends State<HDWebView> {
 
   void _setUrl() {
     webviewController.loadContent(
-      'https://jira.coolcollege.cn',
+      'https://haidaotech.atlassian.net/',
       SourceType.url,
     );
   }
